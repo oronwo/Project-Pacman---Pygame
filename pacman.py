@@ -53,6 +53,9 @@ class Block(pygame.Rect): #inheritance, i am creating a new class (block) that t
         self.scared = False
         self.start_image = image
 
+        self.animation_index = 1
+        self.last_animation_time = pygame.time.get_ticks()
+
     def update_direction(self, direction):
         prev_direction = self.direction
         self.direction = direction
@@ -99,25 +102,57 @@ def load_image(image_name, scale=None): #setting function to load and resize ima
     image = pygame.image.load(os.path.join("images", image_name))
     if scale is not None:
         image = pygame.transform.scale(image, scale)
-    return image
+    return image   
 
 #game sprites
-PACMAN_RIGHT_IMAGE = load_image("pacmanRight.png", (TILE_SIZE, TILE_SIZE))
-PACMAN_LEFT_IMAGE = load_image("pacmanLeft.png", (TILE_SIZE, TILE_SIZE))
-PACMAN_UP_IMAGE = load_image("pacmanUp.png", (TILE_SIZE, TILE_SIZE))
-PACMAN_DOWN_IMAGE = load_image("pacmanDown.png", (TILE_SIZE, TILE_SIZE))
+PACMAN_RIGHT_IMAGE0 = load_image("pacmanRight0.png", (TILE_SIZE, TILE_SIZE))
+PACMAN_RIGHT_IMAGE1 = load_image("pacmanRight1.png", (TILE_SIZE, TILE_SIZE))
+PACMAN_RIGHT_IMAGE2 = load_image("pacmanRight2.png", (TILE_SIZE, TILE_SIZE))
+PACMAN_RIGHT_IMAGES = [PACMAN_RIGHT_IMAGE0, PACMAN_RIGHT_IMAGE1, PACMAN_RIGHT_IMAGE2]
+
+PACMAN_LEFT_IMAGE0 = load_image("pacmanLeft0.png", (TILE_SIZE, TILE_SIZE))
+PACMAN_LEFT_IMAGE1 = load_image("pacmanLeft1.png", (TILE_SIZE, TILE_SIZE))
+PACMAN_LEFT_IMAGE2 = load_image("pacmanLeft2.png", (TILE_SIZE, TILE_SIZE))
+PACMAN_LEFT_IMAGES = [PACMAN_LEFT_IMAGE0, PACMAN_LEFT_IMAGE1, PACMAN_LEFT_IMAGE2]
+
+PACMAN_UP_IMAGE0 = load_image("pacmanUp0.png", (TILE_SIZE, TILE_SIZE))
+PACMAN_UP_IMAGE1 = load_image("pacmanUp1.png", (TILE_SIZE, TILE_SIZE))
+PACMAN_UP_IMAGE2 = load_image("pacmanUp2.png", (TILE_SIZE, TILE_SIZE))
+PACMAN_UP_IMAGES = [PACMAN_UP_IMAGE0, PACMAN_UP_IMAGE1, PACMAN_UP_IMAGE2]
+
+PACMAN_DOWN_IMAGE0 = load_image("pacmanDown0.png", (TILE_SIZE, TILE_SIZE))
+PACMAN_DOWN_IMAGE1 = load_image("pacmanDown1.png", (TILE_SIZE, TILE_SIZE))
+PACMAN_DOWN_IMAGE2 = load_image("pacmanDown2.png", (TILE_SIZE, TILE_SIZE))
+PACMAN_DOWN_IMAGES = [PACMAN_DOWN_IMAGE0, PACMAN_DOWN_IMAGE1, PACMAN_DOWN_IMAGE2]
+
 WALL_IMAGE = load_image("wall.png", (TILE_SIZE, TILE_SIZE))
-BLUE_GHOST_IMAGE= load_image("blueGhost.png", (TILE_SIZE, TILE_SIZE))
-ORANGE_GHOST_IMAGE= load_image("orangeGhost.png", (TILE_SIZE, TILE_SIZE))
-PINK_GHOST_IMAGE= load_image("pinkGhost.png", (TILE_SIZE, TILE_SIZE))
-RED_GHOST_IMAGE= load_image("redGhost.png", (TILE_SIZE, TILE_SIZE))
-SCARED_GHOST_IMAGE= load_image("scaredGhost.png", (TILE_SIZE, TILE_SIZE))
-POWER_FOOD_IAMGE= load_image("powerFood.png", (TILE_SIZE/2, TILE_SIZE/2))
+
+BLUE_GHOST_IMAGE0 = load_image("blueGhost0.png", (TILE_SIZE, TILE_SIZE))
+BLUE_GHOST_IMAGE1 = load_image("blueGhost1.png", (TILE_SIZE, TILE_SIZE))
+BLUE_GHOST_IMAGES = [BLUE_GHOST_IMAGE0, BLUE_GHOST_IMAGE1]
+
+ORANGE_GHOST_IMAGE0 = load_image("orangeGhost0.png", (TILE_SIZE, TILE_SIZE))
+ORANGE_GHOST_IMAGE1 = load_image("orangeGhost1.png", (TILE_SIZE, TILE_SIZE))
+ORANGE_GHOST_IMAGES = [ORANGE_GHOST_IMAGE0, ORANGE_GHOST_IMAGE1]
+
+PINK_GHOST_IMAGE0 = load_image("pinkGhost0.png", (TILE_SIZE, TILE_SIZE))
+PINK_GHOST_IMAGE1 = load_image("pinkGhost1.png", (TILE_SIZE, TILE_SIZE))
+PINK_GHOST_IMAGES = [PINK_GHOST_IMAGE0, PINK_GHOST_IMAGE1]
+
+RED_GHOST_IMAGE0 = load_image("redGhost0.png", (TILE_SIZE, TILE_SIZE))
+RED_GHOST_IMAGE1 = load_image("redGhost1.png", (TILE_SIZE, TILE_SIZE))
+RED_GHOST_IMAGES = [RED_GHOST_IMAGE0, RED_GHOST_IMAGE1]
+
+SCARED_GHOST_IMAGE0 = load_image("scaredGhost0.png", (TILE_SIZE, TILE_SIZE))
+SCARED_GHOST_IMAGE1 = load_image("scaredGhost1.png", (TILE_SIZE, TILE_SIZE))
+SCARED_GHOST_IMAGES = [SCARED_GHOST_IMAGE0, SCARED_GHOST_IMAGE1]
+
+POWER_FOOD_IMAGE= load_image("powerFood.png", (TILE_SIZE/2, TILE_SIZE/2))
 
 pygame.init() #needed in every pygame project, starts the module
 window = pygame.display.set_mode((GAME_WIDTH, GAME_HEIGHT)) #setmode creates the window, we usually get the size from the monitor to calculate a preferrable window size
 pygame.display.set_caption("Pacman") #names the game window
-pygame.display.set_icon(PACMAN_RIGHT_IMAGE) #sets the pacman right image as the window icon
+pygame.display.set_icon(PACMAN_RIGHT_IMAGE1) #sets the pacman right image as the window icon
 clock = pygame.time.Clock() #variable of time/framerate assigned to clock
 
 
@@ -129,6 +164,21 @@ power_foods = []
 score = 0
 lives = 3
 game_over = False
+scared_ghost_start_time = 0
+scared_ghost_duration = 6000
+animation_duration = 150
+
+EAT_FOOD_SOUND = pygame.mixer.Sound("audio/eatFood.ogg")
+EAT_GHOST_SOUND = pygame.mixer.Sound("audio/eatGhost.ogg")
+PACMAN_LOSE_SOUND = pygame.mixer.Sound("audio/pacmanLose.ogg")
+
+SIREN_BGM_PATH = "audio/siren.ogg"
+SCARED_GHOST_BGM_PATH = "audio/scaredGhost.ogg"
+
+current_music = SIREN_BGM_PATH
+pygame.mixer.music.stop()
+pygame.mixer.music.load(current_music)
+pygame.mixer.music.play(-1, 0.0)
 
 def load_map():
     global pacman
@@ -151,26 +201,26 @@ def load_map():
                 walls.append(wall)
 
             elif tile_map_char == 'b': #ghosts
-                ghost = Block(x, y, TILE_SIZE, TILE_SIZE, BLUE_GHOST_IMAGE)
+                ghost = Block(x, y, TILE_SIZE, TILE_SIZE, BLUE_GHOST_IMAGES)
                 ghosts.append(ghost)
 
             elif tile_map_char == 'o': #ghosts
-                ghost = Block(x, y, TILE_SIZE, TILE_SIZE, ORANGE_GHOST_IMAGE)
+                ghost = Block(x, y, TILE_SIZE, TILE_SIZE, ORANGE_GHOST_IMAGES)
                 ghosts.append(ghost)
 
             elif tile_map_char == 'p': #ghosts
-                ghost = Block(x, y, TILE_SIZE, TILE_SIZE, PINK_GHOST_IMAGE)
+                ghost = Block(x, y, TILE_SIZE, TILE_SIZE, PINK_GHOST_IMAGES)
                 ghosts.append(ghost)
 
             elif tile_map_char == 'r': #ghosts
-                ghost = Block(x, y, TILE_SIZE, TILE_SIZE, RED_GHOST_IMAGE)
+                ghost = Block(x, y, TILE_SIZE, TILE_SIZE, RED_GHOST_IMAGES)
                 ghosts.append(ghost)
 
             elif tile_map_char == 'P': #Pacman :)
-                pacman = Block(x, y, TILE_SIZE, TILE_SIZE, PACMAN_RIGHT_IMAGE) #this is a local variable, i made it global on the def loadmap line
+                pacman = Block(x, y, TILE_SIZE, TILE_SIZE, PACMAN_RIGHT_IMAGES) #this is a local variable, i made it global on the def loadmap line
 
             elif tile_map_char == '+':
-                food = Block(x + 8, y + 8, TILE_SIZE/2, TILE_SIZE/2, POWER_FOOD_IAMGE)
+                food = Block(x + 8, y + 8, TILE_SIZE/2, TILE_SIZE/2, POWER_FOOD_IMAGE)
                 power_foods.append(food)
 
             elif tile_map_char == ' ':
@@ -184,7 +234,7 @@ def load_map():
 load_map()
 
 def move():
-    global score, lives, game_over
+    global score, lives, game_over, scared_ghost_start_time, current_music
 
     pacman.x += pacman.velocity_x
     pacman.y += pacman.velocity_y
@@ -204,13 +254,23 @@ def move():
         if pacman.colliderect(ghost): 
             if ghost.scared:
                 score += 500
+                EAT_GHOST_SOUND.play()
                 ghost.reset_position()
             else:    
                 lives -= 1
+                PACMAN_LOSE_SOUND.play()
                 if lives <= 0:
                     game_over = True
+                    pygame.mixer.music.stop()
+                    current_music = ""
                     return
                 reset_positions()
+            if current_music != SIREN_BGM_PATH:
+                pygame.mixer.music.stop()
+                current_music = SIREN_BGM_PATH
+                pygame.mixer.music.load(current_music)
+                pygame.mixer.music.play(-1, 0.0)
+
 
         if ghost.right <= 0:
             ghost.x = GAME_WIDTH - ghost.width
@@ -251,6 +311,8 @@ def move():
         if pacman.colliderect(food):
             foods.remove(food)
             score += 10
+            if not pygame.mixer.get_busy():
+                EAT_FOOD_SOUND.play()
             break
 
     if len(foods) ==0:
@@ -262,13 +324,21 @@ def move():
         if pacman.colliderect(food):
             for ghost in ghosts:
                 ghost.scared = True  
-                ghost.image = SCARED_GHOST_IMAGE 
+                ghost.image = SCARED_GHOST_IMAGES 
+            scared_ghost_start_time = pygame.time.get_ticks()
             power_foods.remove(food)
+
+            if current_music != SCARED_GHOST_BGM_PATH:
+                pygame.mixer.music.stop()
+                current_music = SCARED_GHOST_BGM_PATH
+                pygame.mixer.music.load(current_music)
+                pygame.mixer.music.play(-1, 0.0)
+
             break
 
 def draw(): #setting the function responsible for drawing the visuals // order matters so every layer will be put on the last layers surface
     window.fill("black")
-    window.blit(pacman.image, pacman)
+    window.blit(pacman.image[pacman.animation_index], pacman)
 
     for wall in walls:
         window.blit(wall.image, wall)
@@ -280,7 +350,7 @@ def draw(): #setting the function responsible for drawing the visuals // order m
         window.blit(food.image, food)
 
     for ghost in ghosts:
-        window.blit(ghost.image, ghost)
+        window.blit(ghost.image[ghost.animation_index], ghost)
 
     text_str = "x" + str(lives) + " SCORE: " + str(score)
     if game_over:
@@ -312,6 +382,12 @@ while True: #sets a loop to keep the window opened until the player manually clo
                 reset_positions()
                 lives = 3
                 score = 0
+            if current_music != SIREN_BGM_PATH:
+                pygame.mixer.music.stop()
+                current_music = SIREN_BGM_PATH
+                pygame.mixer.music.load(current_music)
+                pygame.mixer.music.play(-1, 0.0)
+
 
             #if event.key == pygame.K_UP or event.key == pygame.K_w: long version of the same line below this one, noting just for learning purposes
             if event.key in (pygame.K_UP, pygame.K_w):
@@ -324,15 +400,36 @@ while True: #sets a loop to keep the window opened until the player manually clo
                 pacman.update_direction('R') 
 
             if pacman.direction == 'U':
-                pacman.image = PACMAN_UP_IMAGE
+                pacman.image = PACMAN_UP_IMAGES
             elif pacman.direction == 'D':
-                pacman.image = PACMAN_DOWN_IMAGE
+                pacman.image = PACMAN_DOWN_IMAGES
             elif pacman.direction == 'L':
-                pacman.image = PACMAN_LEFT_IMAGE
+                pacman.image = PACMAN_LEFT_IMAGES
             elif pacman.direction == 'R':
-                pacman.image = PACMAN_RIGHT_IMAGE
+                pacman.image = PACMAN_RIGHT_IMAGES
 
     if not game_over:
+        now = pygame.time.get_ticks()
+        if now - scared_ghost_start_time >= scared_ghost_duration:
+            for ghost in ghosts:
+                ghost.scared = False
+                ghost.image = ghost.start_image
+
+            if current_music != SIREN_BGM_PATH:
+                pygame.mixer.music.stop()
+                current_music = SIREN_BGM_PATH
+                pygame.mixer.music.load(current_music)
+                pygame.mixer.music.play(-1, 0.0)
+
+        if now - pacman.last_animation_time >= animation_duration:
+            pacman.animation_index = (pacman.animation_index + 1) % len(pacman.image)
+            pacman.last_animation_time = now
+
+        for ghost in ghosts:
+            if now - ghost.last_animation_time >= animation_duration:
+                ghost.animation_index = (ghost.animation_index + 1) % len(ghost.image)
+                ghost.last_animation_time = now
+        
         move()
         draw() #keeps the visuals opened
         pygame.display.update() #keeps it open
