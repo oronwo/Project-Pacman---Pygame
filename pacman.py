@@ -50,6 +50,9 @@ class Block(pygame.Rect): #inheritance, i am creating a new class (block) that t
         self.start_x = x
         self.start_y = y
 
+        self.scared = False
+        self.start_image = image
+
     def update_direction(self, direction):
         prev_direction = self.direction
         self.direction = direction
@@ -89,6 +92,8 @@ class Block(pygame.Rect): #inheritance, i am creating a new class (block) that t
     def reset_position(self):
         self.x = self.start_x
         self.y = self.start_y
+        self.scared = False
+        self.image = self.start_image
 
 def load_image(image_name, scale=None): #setting function to load and resize image in only one line. ex on #game sprites
     image = pygame.image.load(os.path.join("images", image_name))
@@ -106,6 +111,7 @@ BLUE_GHOST_IMAGE= load_image("blueGhost.png", (TILE_SIZE, TILE_SIZE))
 ORANGE_GHOST_IMAGE= load_image("orangeGhost.png", (TILE_SIZE, TILE_SIZE))
 PINK_GHOST_IMAGE= load_image("pinkGhost.png", (TILE_SIZE, TILE_SIZE))
 RED_GHOST_IMAGE= load_image("redGhost.png", (TILE_SIZE, TILE_SIZE))
+SCARED_GHOST_IMAGE= load_image("scaredGhost.png", (TILE_SIZE, TILE_SIZE))
 POWER_FOOD_IAMGE= load_image("powerFood.png", (TILE_SIZE/2, TILE_SIZE/2))
 
 pygame.init() #needed in every pygame project, starts the module
@@ -196,17 +202,39 @@ def move():
 
     for ghost in ghosts:
         if pacman.colliderect(ghost): 
-            lives -= 1
-            if lives <= 0:
-                game_over = True
-                return
-            reset_positions()
+            if ghost.scared:
+                score += 500
+                ghost.reset_position()
+            else:    
+                lives -= 1
+                if lives <= 0:
+                    game_over = True
+                    return
+                reset_positions()
+
+        if ghost.right <= 0:
+            ghost.x = GAME_WIDTH - ghost.width
+
+        elif ghost.left >= GAME_WIDTH:
+            ghost.x = 0
 
         if ghost.y == TILE_SIZE*9 and ghost.direction != 'U' and ghost.direction != 'D':
             if random.random() < 0.5:
                 ghost.update_direction('U')
             else:
                 ghost.update_direction('D')
+
+        elif ghost.x == pacman.x:
+            if ghost.y < pacman.y:
+                ghost.update_direction('U if ghost.scared else D')
+            elif ghost.y > pacman.y:
+                ghost.update_direction('D if ghost.scared else U')
+
+        elif ghost.y == pacman.y:
+            if ghost.x < pacman.x:
+                ghost.update_direction('L if ghost.scared else R')
+            elif ghost.x > pacman.x:
+                ghost.update_direction('R if ghost.scared else L')
 
         ghost.x += ghost.velocity_x
         ghost.y += ghost.velocity_y
@@ -229,6 +257,14 @@ def move():
         load_map()
         reset_positions()
         lives = (lives + 1)
+
+    for food in power_foods:
+        if pacman.colliderect(food):
+            for ghost in ghosts:
+                ghost.scared = True  
+                ghost.image = SCARED_GHOST_IMAGE 
+            power_foods.remove(food)
+            break
 
 def draw(): #setting the function responsible for drawing the visuals // order matters so every layer will be put on the last layers surface
     window.fill("black")
