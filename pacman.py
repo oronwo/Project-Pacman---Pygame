@@ -1,6 +1,7 @@
 import pygame #import pygame module, the main module the game will run
 from sys import exit #basically imports the exit option on the pygame window
 import os
+import random
 
 #X = wall, O = skip, P = pac man, ' ' = food, + = power pellet
 #Ghosts: b = blue, o = orange, p = pink, r = red
@@ -35,14 +36,59 @@ TILE_SIZE = 32
 GAME_WIDTH = COLUMN_COUNT * TILE_SIZE
 GAME_HEIGHT = ROW_COUNT * TILE_SIZE
 
+DIRECTIONS = ['U', 'D', 'L', 'R']
+
 class Block(pygame.Rect): #inheritance, i am creating a new class (block) that takes functionalities of the rect obj and i can create more of them without altering the original rect obj
     def __init__(self, x, y, width, height, image):
         pygame.Rect.__init__(self, x, y, width, height)
         self.image = image
         self.direction = 'R'
 
+        self.velocity_x = 0
+        self.velocity_y = 0
+
+        self.start_x = x
+        self.start_y = y
+
     def update_direction(self, direction):
+        prev_direction = self.direction
         self.direction = direction
+        self.update_velocity()
+        self.x += self.velocity_x
+        self.y += self.velocity_y
+
+        collided = False
+        for wall in walls:
+            if wall.colliderect(self):
+                collided = True
+                break
+
+        self.x -= self.velocity_x
+        self.y -= self.velocity_y
+        if collided:
+            self.direction = prev_direction
+            self.update_velocity()
+
+    def update_velocity(self):
+        if self.direction == 'U':
+           self.velocity_x = 0
+           self.velocity_y = -TILE_SIZE/4
+
+        elif self.direction == 'D':
+            self.velocity_x = 0
+            self.velocity_y = TILE_SIZE/4
+
+        elif self.direction == 'L':
+            self.velocity_x = -TILE_SIZE/4
+            self.velocity_y = 0
+
+        elif self.direction == 'R':
+            self.velocity_x = TILE_SIZE/4
+            self.velocity_y = 0
+
+    def reset_position(self):
+        self.x = self.start_x
+        self.y = self.start_y
 
 def load_image(image_name, scale=None): #setting function to load and resize image in only one line. ex on #game sprites
     image = pygame.image.load(os.path.join("images", image_name))
@@ -74,6 +120,9 @@ walls = []
 foods = []
 ghosts = []
 power_foods = []
+score = 0
+lives = 3
+game_over = False
 
 def load_map():
     global pacman
@@ -121,8 +170,65 @@ def load_map():
             elif tile_map_char == ' ':
                 food = Block(x + 14, y + 14, 4, 4, None)
                 foods.append(food)
+
+    for ghost in ghosts:
+        new_direction = random.choice(DIRECTIONS)
+        ghost.update_direction(new_direction)
                
 load_map()
+
+def move():
+    global score, lives, game_over
+
+    pacman.x += pacman.velocity_x
+    pacman.y += pacman.velocity_y
+
+    if pacman.right <= 0:
+        pacman.x = GAME_WIDTH - pacman.width
+    elif pacman.left >= GAME_WIDTH:
+        pacman.x = 0
+
+    for wall in walls:
+        if wall.colliderect(pacman):
+            pacman.x -= pacman.velocity_x
+            pacman.y -= pacman.velocity_y
+            break
+
+    for ghost in ghosts:
+        if pacman.colliderect(ghost): 
+            lives -= 1
+            if lives <= 0:
+                game_over = True
+                return
+            reset_positions()
+
+        if ghost.y == TILE_SIZE*9 and ghost.direction != 'U' and ghost.direction != 'D':
+            if random.random() < 0.5:
+                ghost.update_direction('U')
+            else:
+                ghost.update_direction('D')
+
+        ghost.x += ghost.velocity_x
+        ghost.y += ghost.velocity_y
+
+        for wall in walls:
+            if wall.colliderect(ghost):
+                ghost.x -= ghost.velocity_x
+                ghost.y -= ghost.velocity_y
+                new_direction = random.choice(DIRECTIONS)
+                ghost.update_direction(new_direction)
+                break
+
+    for food in foods:
+        if pacman.colliderect(food):
+            foods.remove(food)
+            score += 10
+            break
+
+    if len(foods) ==0:
+        load_map()
+        reset_positions()
+        lives = (lives + 1)
 
 def draw(): #setting the function responsible for drawing the visuals // order matters so every layer will be put on the last layers surface
     window.fill("black")
@@ -140,6 +246,23 @@ def draw(): #setting the function responsible for drawing the visuals // order m
     for ghost in ghosts:
         window.blit(ghost.image, ghost)
 
+    text_str = "x" + str(lives) + " SCORE: " + str(score)
+    if game_over:
+        text_str = "x" + str(lives) + " GAME OVER: " + str(score)
+
+    text_font = pygame.font.SysFont("Comic Sans MS", TILE_SIZE//2)
+    text_render = text_font.render(text_str, True, "white")
+    window.blit(text_render, (5, 0))
+
+def reset_positions():
+    pacman.reset_position()
+    pacman.velocity_x = 0
+    pacman.velocity_y = 0
+    for ghost in ghosts:
+        ghost.reset_position()
+        new_direction = random.choice(DIRECTIONS)
+        ghost.update_direction(new_direction)
+
 while True: #sets a loop to keep the window opened until the player manually closes it
     for event in pygame.event.get():
         if event.type == pygame.QUIT: #makes the window closeable by clicking on the X button
@@ -147,6 +270,13 @@ while True: #sets a loop to keep the window opened until the player manually clo
             exit()
 
         if event.type == pygame.KEYDOWN:
+            if game_over:
+                game_over = False
+                load_map()
+                reset_positions()
+                lives = 3
+                score = 0
+
             #if event.key == pygame.K_UP or event.key == pygame.K_w: long version of the same line below this one, noting just for learning purposes
             if event.key in (pygame.K_UP, pygame.K_w):
                 pacman.update_direction('U')
@@ -166,6 +296,8 @@ while True: #sets a loop to keep the window opened until the player manually clo
             elif pacman.direction == 'R':
                 pacman.image = PACMAN_RIGHT_IMAGE
 
-    draw() #keeps the visuals opened
-    pygame.display.update() #keeps it open
-    clock.tick(60) #runs at 60fps
+    if not game_over:
+        move()
+        draw() #keeps the visuals opened
+        pygame.display.update() #keeps it open
+        clock.tick(20) #runs at (x)fps
